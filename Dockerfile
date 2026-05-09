@@ -57,14 +57,15 @@ WORKDIR /triton
 RUN MAX_JOBS=2 TORCH_CUDA_ARCH_LIST="8.7" \
         pip wheel . -w /triton/dist --no-deps --no-cache-dir $PIP_OPTS
 
-# Stage 3: lean release image. Carries the freshly-built wheel at
-# /triton/dist/ so consumers can extract it via ``COPY --from``, and
-# pip-installs the same wheel so the image is self-testable
-# (``python3 -c 'import triton; print(triton.__version__)'``).
-FROM nvcr.io/nvidia/l4t-jetpack:${JETPACK}
+# Stage 3: release image. Inherits torch from anarkiwi/jetson-pytorch
+# so ``import triton`` (which links against torch_python at load-time)
+# and ``import torch`` both work out of the box. Carries the
+# freshly-built wheel at /triton/dist/ so consumers can extract it
+# via ``COPY --from``, and pip-installs the same wheel over whatever
+# triton the base may already carry. Self-testable with
+# ``python3 -c 'import torch, triton; ...'``.
+FROM anarkiwi/jetson-pytorch:${PYTORCH_VERSION}
 ARG PIP_OPTS=""
 ENV PIP_OPTS=$PIP_OPTS
-RUN apt-get -yq update && apt-get install --no-install-recommends -yq \
-        python3-pip libopenblas0 libopenmpi3
 COPY --from=triton-builder /triton/dist /triton/dist
-RUN pip install $PIP_OPTS --no-cache-dir /triton/dist/*.whl
+RUN pip install $PIP_OPTS --no-cache-dir --force-reinstall --no-deps /triton/dist/*.whl
