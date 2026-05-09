@@ -68,27 +68,53 @@ Required secrets in the repo's `release` environment:
 * `DOCKER_USERNAME`
 * `DOCKER_PASSWORD`
 
-## Integration with jetson-pytorch
+## Build DAG
 
-After this repo's image is published, drop the inline triton-builder
-stage from `anarkiwi/jetson-pytorch/Dockerfile.pytorch` and pull the
-wheel from here instead. Sketch:
-
-```dockerfile
-# In jetson-pytorch's final stage, replace the inline triton-builder
-# bind-mount with a pull from anarkiwi/jetson-triton:
-RUN --mount=type=bind,from=pytorch-builder,source=/pytorch/dist,target=/pytorch/dist \
-    --mount=type=bind,from=anarkiwi/jetson-triton:${PYTORCH_VERSION},source=/triton/dist,target=/triton/dist \
-    pip install --no-cache-dir $PIP_OPTS /pytorch/dist/*.whl /triton/dist/*.whl
+```
+l4t-jetpack → jetson-pytorch → jetson-triton → consumer (preframr-jetson, etc.)
+              (torch wheel,      (FROM ↑;
+              no triton)         builds triton
+                                 against installed
+                                 torch)
 ```
 
-Build order then becomes:
+One-way. **jetson-pytorch must be built and published first**, with
+its inline triton-builder stage removed (this repo replaces it).
+jetson-triton then `FROM`s the no-triton jetson-pytorch image and
+produces the triton wheel.
 
-1. `anarkiwi/jetson-pytorch:vX.Y.Z` -- pytorch wheel only, no triton.
-2. `anarkiwi/jetson-triton:vX.Y.Z` -- triton wheel built against (1).
+Closing this into a cycle (e.g. having jetson-pytorch install
+triton from anarkiwi/jetson-triton in its own final stage) would
+deadlock the first-publish bootstrap; don't do that. Instead, leave
+jetson-pytorch as torch-only and have downstream consumer images
+pull both pieces:
 
-Each fits its own 16 GB ARM-native runner; the failed combined
-v2.11.0 build pattern is gone.
+```dockerfile
+# Option A: FROM jetson-triton (carries torch + triton already).
+FROM anarkiwi/jetson-triton:vX.Y.Z
+
+# Option B: FROM jetson-pytorch, install triton wheel via
+# multi-stage from jetson-triton.
+FROM anarkiwi/jetson-pytorch:vX.Y.Z
+RUN --mount=type=bind,from=anarkiwi/jetson-triton:vX.Y.Z,source=/triton/dist,target=/triton/dist \
+    pip install --no-cache-dir /triton/dist/*.whl
+```
+
+Each repo's build fits its own 16 GB ARM-native runner; the failed
+combined v2.11.0 pattern is gone.
+
+### Bootstrap order (first time at a new pytorch version)
+
+1. In `anarkiwi/jetson-pytorch`'s `Dockerfile.pytorch`, drop the
+   `triton-builder` stage and the triton wheel install from the
+   final stage. Bump the tag, push -- builds + publishes
+   `anarkiwi/jetson-pytorch:vX.Y.Z` (torch-only).
+2. Tag this repo at `vX.Y.Z`, push -- workflow builds against (1)
+   and publishes `anarkiwi/jetson-triton:vX.Y.Z`.
+3. Update consumer Dockerfiles (e.g. `anarkiwi/preframr` jetson
+   branch's `Dockerfile`) to reference both as above. The
+   jetson-pytorch image now has no triton; consumers that need it
+   pull it from here.
 
 ## Sanity check
 
