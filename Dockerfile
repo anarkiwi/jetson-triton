@@ -18,7 +18,7 @@
 # is ABI-matched to the torch version the consumer image carries.
 
 ARG JETPACK="r36.4.0"
-ARG PYTORCH_VERSION="v2.11.0"
+ARG PYTORCH_VERSION="v2.12.0"
 
 # Stage 1: derive the triton commit pinned by torch's CI for the target
 # pytorch version. Sparse + filter=blob:none keeps this clone small
