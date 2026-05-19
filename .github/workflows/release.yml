@@ -1,5 +1,8 @@
 name: docker-release
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
 jobs:
   jetson-triton:
     runs-on: ubuntu-24.04-arm
