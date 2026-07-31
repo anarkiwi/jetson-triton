@@ -52,3 +52,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
         if: github.repository == 'anarkiwi/jetson-triton' && github.event_name == 'push'
+      # The runner is arm64 and GPU-less: this proves packaging, not
+      # codegen. /smoke_test.py is inherited from jetson-pytorch and
+      # rechecks torch survived the triton install.
+      - name: Smoke test pushed image
+        run: |
+          set -eu
+          image=anarkiwi/jetson-triton:${{ steps.version.outputs.image_tag }}
+          docker run --rm "$image" python3 /smoke_test.py
+          docker run --rm "$image" python3 /triton_smoke_test.py
+        if: github.repository == 'anarkiwi/jetson-triton' && github.event_name == 'push'

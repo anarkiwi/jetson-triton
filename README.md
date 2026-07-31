@@ -127,7 +127,19 @@ forward-compatibility package.
 
 ## Sanity check
 
+Four tests ship in the image. `triton_smoke_test.py` runs without a
+driver and gates CI; `triton_gpu_test.py` compiles a kernel and needs
+a real Orin. `smoke_test.py` and `gpu_test.py` are inherited from
+jetson-pytorch and still cover the torch half, which matters because
+the triton wheel is installed with `--force-reinstall --no-deps`.
+
 ```bash
-docker run --rm anarkiwi/jetson-triton:vX.Y.Z \
-    python3 -c "import triton; print(triton.__version__)"
+docker run --rm anarkiwi/jetson-triton:vX.Y.Z python3 /smoke_test.py
+docker run --rm anarkiwi/jetson-triton:vX.Y.Z python3 /triton_smoke_test.py
+docker run --rm --runtime nvidia anarkiwi/jetson-triton:vX.Y.Z python3 /gpu_test.py
+docker run --rm --runtime nvidia anarkiwi/jetson-triton:vX.Y.Z python3 /triton_gpu_test.py
 ```
+
+CI runs the two driver-less tests against the pushed image. GPU
+codegen cannot be covered there -- the runners have no GPU -- so run
+the other two on hardware before trusting a release.
