@@ -15,12 +15,25 @@ jobs:
         uses: docker/setup-qemu-action@v4
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
-      - name: Get the version
-        id: get_version
-        run: echo ::set-output name=VERSION::$(echo $GITHUB_REF | cut -d / -f 3)
-      - name: Change for main
-        id: change_version
-        run: if [ "${{ steps.get_version.outputs.VERSION }}" == "main" ]; then echo ::set-output name=VERSION::latest; else echo ::set-output name=VERSION::${{ steps.get_version.outputs.VERSION }}; fi
+      # The image tag and the pytorch version are not the same thing:
+      # main publishes :latest, and "latest" is neither a pytorch git
+      # ref (stage 1 clones it) nor a jetson-pytorch image tag we want
+      # to pin to. Take the version from the Dockerfile's own default
+      # so there is one place to bump.
+      - name: Resolve versions
+        id: version
+        run: |
+          set -eu
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            image_tag="$GITHUB_REF_NAME"
+            torch_ref="$GITHUB_REF_NAME"
+          else
+            image_tag=latest
+            torch_ref=$(sed -n 's/^ARG PYTORCH_VERSION="\(.*\)"$/\1/p' Dockerfile)
+          fi
+          test -n "$torch_ref"
+          echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
+          echo "torch_ref=$torch_ref" >> "$GITHUB_OUTPUT"
       - name: Login to Docker Hub
         uses: docker/login-action@v4
         with:
@@ -33,9 +46,9 @@ jobs:
           file: Dockerfile
           platforms: linux/arm64
           push: true
-          tags: anarkiwi/jetson-triton:${{ steps.change_version.outputs.VERSION }}
+          tags: anarkiwi/jetson-triton:${{ steps.version.outputs.image_tag }}
           build-args: |
-            PYTORCH_VERSION=${{ steps.change_version.outputs.VERSION }}
+            PYTORCH_VERSION=${{ steps.version.outputs.torch_ref }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
         if: github.repository == 'anarkiwi/jetson-triton' && github.event_name == 'push'
