@@ -13,9 +13,9 @@ from torch's CI metadata.
 
 ## Output
 
-* **Image**: `anarkiwi/jetson-triton:${VERSION}` -- minimal
-  l4t-jetpack base with triton pip-installed and the source wheel at
-  `/triton/dist/triton-*.whl`.
+* **Image**: `anarkiwi/jetson-triton:${VERSION}` -- `jetson-pytorch`
+  base (CUDA 13.2.1 SBSA / Ubuntu 24.04, JetPack 7.2) with triton
+  pip-installed and the source wheel at `/triton/dist/triton-*.whl`.
 * **Wheel** (inside the image): consumers can extract via
   multi-stage:
 
@@ -34,7 +34,7 @@ from torch's CI metadata.
 ## Versioning
 
 The image tag matches the corresponding `anarkiwi/jetson-pytorch`
-version (e.g. `v2.11.0`). The triton commit is derived from
+version (e.g. `v2.13.0`). The triton commit is derived from
 `pytorch/.ci/docker/ci_commit_pins/triton.txt` at that pytorch tag,
 so the wheel ABI tracks torch's expectations automatically.
 
@@ -44,8 +44,8 @@ The pip mirror env var matches the rest of the anarkiwi setup:
 
 ```bash
 export PIP_OPTS="--index-url http://192.168.5.1:5001/index/ --trusted-host 192.168.5.1"
-./build.sh                  # default v2.11.0
-./build.sh v2.10.0          # override
+./build.sh                  # default v2.13.0
+./build.sh v2.12.0          # override
 ```
 
 `build.sh` invokes `docker buildx --platform linux/arm64`. On
@@ -71,11 +71,10 @@ Required secrets in the repo's `release` environment:
 ## Build DAG
 
 ```
-l4t-jetpack → jetson-pytorch → jetson-triton → consumer (preframr-jetson, etc.)
-              (torch wheel,      (FROM ↑;
-              no triton)         builds triton
-                                 against installed
-                                 torch)
+nvidia/cuda:13.2.1-cudnn-devel-ubuntu24.04 → jetson-pytorch → jetson-triton → consumer
+(JetPack 7.2 / L4T r39.2 SBSA toolkit)       (torch wheel,     (FROM ↑; builds
+                                             no triton)        triton against
+                                                               installed torch)
 ```
 
 One-way. **jetson-pytorch must be built and published first**, with
@@ -102,6 +101,16 @@ RUN --mount=type=bind,from=anarkiwi/jetson-triton:vX.Y.Z,source=/triton/dist,tar
 
 Each repo's build fits its own 16 GB ARM-native runner; the failed
 combined v2.11.0 pattern is gone.
+
+## Host requirements
+
+JetPack 7.2 (Jetson Linux r39.2, CUDA 13.2.1, Ubuntu 24.04) on the
+Orin family -- AGX Orin, Orin NX, Orin Nano. JetPack 7.2 is the first
+7.x release covering Orin, and CUDA 13.2 is the first toolkit where
+Orin uses the standard Arm SBSA packaging, so stock `nvidia/cuda`
+arm64 containers run directly. JetPack 6 hosts (L4T r36.x) are not
+supported by these images without the `cuda-compat-orin-13-2`
+forward-compatibility package.
 
 ### Bootstrap order (first time at a new pytorch version)
 

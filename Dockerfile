@@ -17,13 +17,14 @@
 # shallow-clone pytorch just to read that pin, so the produced wheel
 # is ABI-matched to the torch version the consumer image carries.
 
-ARG JETPACK="r36.4.0"
-ARG PYTORCH_VERSION="v2.11.0"
+ARG PYTORCH_VERSION="v2.13.0"
 
 # Stage 1: derive the triton commit pinned by torch's CI for the target
 # pytorch version. Sparse + filter=blob:none keeps this clone small
-# (just the metadata file we need).
-FROM nvcr.io/nvidia/l4t-jetpack:${JETPACK} AS pin-resolver
+# (just the metadata file we need). Plain ubuntu here -- this stage
+# needs git and nothing else, and matches the 24.04 userspace of the
+# JetPack 7.2 / CUDA 13.2 SBSA base that jetson-pytorch now builds on.
+FROM ubuntu:24.04 AS pin-resolver
 ARG PYTORCH_VERSION
 RUN apt-get -yq update && apt-get install --no-install-recommends -yq git ca-certificates
 RUN git clone --depth 1 --branch ${PYTORCH_VERSION} \
@@ -41,9 +42,10 @@ RUN git clone --depth 1 --branch ${PYTORCH_VERSION} \
 FROM anarkiwi/jetson-pytorch:${PYTORCH_VERSION} AS triton-builder
 ARG PIP_OPTS=""
 ENV PIP_OPTS=$PIP_OPTS
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
 RUN apt-get -yq update && apt-get install --no-install-recommends -yq \
         git python3-pip libssl-dev cmake ninja-build \
-        g++ zlib1g-dev libstdc++-12-dev \
+        g++ zlib1g-dev libstdc++-13-dev \
     && pip install $PIP_OPTS --no-cache-dir wheel scikit-build ninja lit
 COPY --from=pin-resolver /triton_pin.txt /tmp/triton_pin.txt
 RUN git clone https://github.com/triton-lang/triton.git /triton \
@@ -67,5 +69,6 @@ RUN MAX_JOBS=2 TORCH_CUDA_ARCH_LIST="8.7" \
 FROM anarkiwi/jetson-pytorch:${PYTORCH_VERSION}
 ARG PIP_OPTS=""
 ENV PIP_OPTS=$PIP_OPTS
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
 COPY --from=triton-builder /triton/dist /triton/dist
 RUN pip install $PIP_OPTS --no-cache-dir --force-reinstall --no-deps /triton/dist/*.whl
