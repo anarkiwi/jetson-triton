@@ -64,11 +64,13 @@ RUN MAX_JOBS=2 TORCH_CUDA_ARCH_LIST="8.7" \
 # and ``import torch`` both work out of the box. Carries the
 # freshly-built wheel at /triton/dist/ so consumers can extract it
 # via ``COPY --from``, and pip-installs the same wheel over whatever
-# triton the base may already carry. Self-testable with
-# ``python3 -c 'import torch, triton; ...'``.
+# triton the base may already carry. Carries its own tests alongside
+# the /smoke_test.py and /gpu_test.py inherited from jetson-pytorch,
+# which still cover the torch half.
 FROM anarkiwi/jetson-pytorch:${PYTORCH_VERSION}
 ARG PIP_OPTS=""
 ENV PIP_OPTS=$PIP_OPTS
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 COPY --from=triton-builder /triton/dist /triton/dist
 RUN pip install $PIP_OPTS --no-cache-dir --force-reinstall --no-deps /triton/dist/*.whl
+COPY triton_smoke_test.py triton_gpu_test.py /
