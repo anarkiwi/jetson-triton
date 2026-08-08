@@ -24,7 +24,7 @@ ARG PYTORCH_VERSION="v2.13.0"
 # (just the metadata file we need). Plain ubuntu here -- this stage
 # needs git and nothing else, and matches the 24.04 userspace of the
 # JetPack 7.2 / CUDA 13.2 SBSA base that jetson-pytorch now builds on.
-FROM ubuntu:24.04 AS pin-resolver
+FROM ubuntu:25.10 AS pin-resolver
 ARG PYTORCH_VERSION
 RUN apt-get -yq update && apt-get install --no-install-recommends -yq git ca-certificates
 RUN git clone --depth 1 --branch ${PYTORCH_VERSION} \
