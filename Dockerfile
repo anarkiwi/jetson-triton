@@ -17,7 +17,7 @@
 # shallow-clone pytorch just to read that pin, so the produced wheel
 # is ABI-matched to the torch version the consumer image carries.
 
-ARG PYTORCH_VERSION="v2.13.0"
+ARG PYTORCH_VERSION="v2.14.0"
 
 # Stage 1: derive the triton commit pinned by torch's CI for the target
 # pytorch version. Sparse + filter=blob:none keeps this clone small

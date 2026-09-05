@@ -34,7 +34,7 @@ from torch's CI metadata.
 ## Versioning
 
 The image tag matches the corresponding `anarkiwi/jetson-pytorch`
-version (e.g. `v2.13.0`). The triton commit is derived from
+version (e.g. `v2.14.0`). The triton commit is derived from
 `pytorch/.ci/docker/ci_commit_pins/triton.txt` at that pytorch tag,
 so the wheel ABI tracks torch's expectations automatically.
 
@@ -44,8 +44,8 @@ The pip mirror env var matches the rest of the anarkiwi setup:
 
 ```bash
 export PIP_OPTS="--index-url http://192.168.5.1:5001/index/ --trusted-host 192.168.5.1"
-./build.sh                  # default v2.13.0
-./build.sh v2.12.0          # override
+./build.sh                  # default v2.14.0
+./build.sh v2.13.0          # override
 ```
 
 `build.sh` invokes `docker buildx --platform linux/arm64`. On
