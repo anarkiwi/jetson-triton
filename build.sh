@@ -4,13 +4,13 @@
 #
 # Usage:
 #   export PIP_OPTS="--index-url http://192.168.5.1:5001/index/ --trusted-host 192.168.5.1"
-#   ./build.sh              # default PYTORCH_VERSION=v2.13.0
-#   ./build.sh v2.12.0      # override
+#   ./build.sh              # default PYTORCH_VERSION=v2.14.0
+#   ./build.sh v2.13.0      # override
 #
 # Output image: anarkiwi/jetson-triton:${PYTORCH_VERSION}.
 set -e
 
-PYTORCH_VERSION=${1:-v2.13.0}
+PYTORCH_VERSION=${1:-v2.14.0}
 
 docker buildx build \
     --platform linux/arm64 \
